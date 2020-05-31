@@ -7,6 +7,7 @@ import java.nio.charset.Charset
 import java.util.ArrayList
 import java.util.concurrent.TimeUnit
 import kotlin.streams.toList
+import kotlin.text.StringBuilder
 
 /**
  * Gathering links params
@@ -19,11 +20,13 @@ const val DOWNLOAD_TASK_FILENAME = "download_list.json"
  * Downloading articles params
  */
 const val AUTH_COOKIE = ""
-const val DOWNLOAD_FOLDER = "../dtestDownload"
+const val DOWNLOAD_FOLDER = "dtest_offline"
+const val MAIN_PAGE_FILENAME = "dashboard.html"
 
 fun main() {
-    prepareDownloadTasks()
-    executeDownloading()
+//    prepareDownloadTasks()
+//    executeDownloading()
+    createMainPage()
 }
 
 /**
@@ -102,10 +105,11 @@ fun executeDownloading() {
 
 fun normalizeTitle(articleTitle: String): String {
     val articleNameInvalidChars = "\\s|\\(|\\)".toRegex()
-    return articleTitle.replace(articleNameInvalidChars, "_")
+    return articleTitle.trim().replace(articleNameInvalidChars, "_")
 }
 
 fun wget(url: String, path: String, cookie: String) {
+//    checkAuthCookie()
     try {
         val command =
             "wsl wget -E -H -k -K -nd -N -p -P $DOWNLOAD_FOLDER/$path --restrict-file-names=windows" +
@@ -123,4 +127,48 @@ fun wget(url: String, path: String, cookie: String) {
     } catch (e: Exception) {
         e.printStackTrace()
     }
+}
+
+fun checkAuthCookie() {
+    TODO("Not yet implemented")
+}
+
+fun createMainPage() {
+    val sb = StringBuilder()
+    sb.append(
+        "" +
+                "<!DOCTYPE html>\n" +
+                "<html>\n" +
+                "<head>\n" +
+                "    <title>Page Title</title>\n" +
+                "    <meta charset=\"utf-8\"/>\n" +
+                "</head>\n" +
+                "<body><h1>dTest Offline</h1><br/>"
+    )
+    File(DOWNLOAD_FOLDER)
+        .walkTopDown()
+        .filter { file ->
+            file.isDirectory || file.name.endsWith(".html")
+                    && !file.name.contains("ns.html")
+        }
+        .forEach { file ->
+            run {
+                if (file.name.endsWith(".html") && file.canonicalPath.contains("recenze")) {
+                    println(file.path)
+                    val link = "<a href=\"${file.path}\">${file.parentFile.parentFile.name}</a><br/>"
+                    sb.append(link)
+                }
+                if (file.name.endsWith(".html") && !file.canonicalPath.contains("recenze")) {
+                    println(file.path)
+                    val link = "- <a href=\"${file.path}\">${file.parentFile.name}</a><br/>"
+                    sb.append(link)
+                }
+            }
+        }
+    sb.append(
+        "</body>\n" +
+                "</html>"
+    )
+
+    File(MAIN_PAGE_FILENAME).printWriter().use { out -> out.println(sb) }
 }
