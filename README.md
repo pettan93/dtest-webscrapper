@@ -19,7 +19,8 @@ I choose
 - The easiest way I found to webscrap webpage using `wget` utility, inspired by [this gist](https://gist.github.com/dannguyen/03a10e850656577cfb57) (thanks Dannguyen).
 - Kotlin/Gradle for the rest, because as a Java/Maven guy and wanna taste a different kind of coffee.
 
-
+##### Notes
+ - I am running on Windows so there is usage of [WSL](https://docs.microsoft.com/en-us/windows/wsl/about) to easily reach `wget`
 
 
    
