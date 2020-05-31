@@ -7,20 +7,25 @@ For each article/test I want full copy of page with images and everything visibl
 Disclaimer: There isn't any intend to illegally share downloaded content or any other bad intent.
 
 #### Way to solve
+The very first and most straighforward steps to get the job done that comes to my mind are like this:
 1) Iterate over paginator on page with list of articles for store all links to article.
 2) Iterate over all articles page bodies and find links to comparision pages (article can have one or more links to sub-article with products comparision) and store them.
-3) Persist parsed tree hierarchy of links (and titles). Structure is going to be used as list of tasks for downloading part of program.
+3) Persist parsed tree hierarchy of links (and titles). Structure is going to be used as list of tasks for download stage.
 4) Copy cookies from a browser after authentication on a website to use it later.
-5) Download all the links using! Cookies provided to access content behind paywall.
-6) Create simple html page in root directory for navigation across downloaded content. 
+5) Download all the links using provided cookies to access content behind paywall.
+6) Create simple html page in root directory for navigation across downloaded content.
 
 
-I choose 
+##### Tools 
 - The easiest way I found to webscrap webpage using `wget` utility, inspired by [this gist](https://gist.github.com/dannguyen/03a10e850656577cfb57) (thanks Dannguyen).
 - Kotlin/Gradle for the rest, because as a Java/Maven guy and wanna taste a different kind of coffee.
+- [jsoup: HTML Parser lib](https://jsoup.org/) and [gson](https://github.com/google/gson)
+
 
 ##### Notes
  - I am running on Windows so there is usage of [WSL](https://docs.microsoft.com/en-us/windows/wsl/about) to easily reach `wget`
+ - It's a freetime micro project for one-time usage with no future plans    
+ 
 
 
    
