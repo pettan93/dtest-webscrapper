@@ -4,10 +4,9 @@ import com.google.gson.Gson
 import org.jsoup.Jsoup
 import java.io.File
 import java.nio.charset.Charset
-import java.util.ArrayList
+import java.util.*
 import java.util.concurrent.TimeUnit
 import kotlin.streams.toList
-import kotlin.text.StringBuilder
 
 /**
  * Gathering links params
@@ -26,7 +25,6 @@ const val MAIN_PAGE_FILENAME = "dashboard.html"
 fun main() {
 //    prepareDownloadTasks()
 //    executeDownloading()
-    createMainPage()
 }
 
 /**
@@ -81,40 +79,68 @@ fun prepareDownloadTasks() {
 }
 
 /**
- * Reads file with article links and executes downloading
+ * Reads file with article links file and executes downloading
  */
 fun executeDownloading() {
     val downloadTasks =
         Gson().fromJson(File(DOWNLOAD_TASK_FILENAME).readText(Charset.defaultCharset()), Array<Article>::class.java)
             .toList() as ArrayList<Article>
 
+    File(MAIN_PAGE_FILENAME).printWriter().use { out -> out.println(
+        "<!DOCTYPE html><html><head><title>dTest offline</title><meta charset=\"utf-8\"/></head><body><h1>dTest offline</h1><br/>"
+    ) }
+
     for (article in downloadTasks) {
         println("Downloading article : " + article.title + " " + article.mainHref)
-        wget(article.mainHref, "${normalizeTitle(article.title)}/recenze/", AUTH_COOKIE)
+        if (wget(article.mainHref, "${normalizeTitle(article.title)}/recenze/", AUTH_COOKIE)) {
+            createArticleLink(article.title, "${normalizeTitle(article.title)}/recenze/")
+        }
 
         for (comparison in article.comparisons) {
             println(" - Downloading subarticle : " + comparison.title + " " + comparison.mainHref)
-            wget(
-                comparison.mainHref,
-                "${normalizeTitle(article.title)}/srovnání/${normalizeTitle(comparison.title)}/",
-                AUTH_COOKIE
-            )
+            if (wget(
+                    comparison.mainHref,
+                    "${normalizeTitle(article.title)}/srovnání/${normalizeTitle(comparison.title)}/",
+                    AUTH_COOKIE
+                )
+            ) {
+                createArticleLink(
+                    comparison.title,
+                    "${normalizeTitle(article.title)}/srovnání/${normalizeTitle(comparison.title)}/"
+                )
+            }
         }
     }
+
+    File(MAIN_PAGE_FILENAME).appendText("</body></html>")
 }
 
-fun normalizeTitle(articleTitle: String): String {
-    val articleNameInvalidChars = "\\s|\\(|\\)".toRegex()
-    return articleTitle.trim().replace(articleNameInvalidChars, "_")
+fun createArticleLink(articleTitle: String, articlePath: String) {
+    File("$DOWNLOAD_FOLDER/$articlePath")
+        .walkTopDown()
+        .filter { file ->
+            file.isDirectory || file.name.endsWith(".html")
+                    && !file.name.contains("ns.html")
+        }
+        .forEach { file ->
+            run {
+                if (file.name.endsWith(".html") && file.canonicalPath.contains("recenze")) {
+                    File(MAIN_PAGE_FILENAME).appendText("<a href=\"${file.path}\">$articleTitle</a><br/>\n")
+                }
+                if (file.name.endsWith(".html") && !file.canonicalPath.contains("recenze")) {
+                    File(MAIN_PAGE_FILENAME).appendText(" - <a href=\"${file.path}\">$articleTitle</a><br/>\n")
+                }
+            }
+        }
 }
 
-fun wget(url: String, path: String, cookie: String) {
+fun wget(url: String, path: String, cookie: String): Boolean {
 //    checkAuthCookie()
     try {
         val command =
             "wsl wget -E -H -k -K -nd -N -p -P $DOWNLOAD_FOLDER/$path --restrict-file-names=windows" +
                     " --header \"Cookie: $cookie\" $url"
-//    println(command)
+        println(command)
         val process = ProcessBuilder(command.split(" ")).start()
         process.inputStream.reader(Charsets.UTF_8).use {
             println(it.readText())
@@ -124,51 +150,18 @@ fun wget(url: String, path: String, cookie: String) {
         }
         process.waitFor(10, TimeUnit.SECONDS) // lets wait several seconds to finish wget download
         process.destroyForcibly() // kill the process after, to prevent main thread stuck
+        return true
     } catch (e: Exception) {
         e.printStackTrace()
+        return false
     }
+}
+
+fun normalizeTitle(articleTitle: String): String {
+    val articleNameInvalidChars = "\\s|\\(|\\)".toRegex()
+    return articleTitle.trim().replace(articleNameInvalidChars, "_")
 }
 
 fun checkAuthCookie() {
     TODO("Not yet implemented")
-}
-
-fun createMainPage() {
-    val sb = StringBuilder()
-    sb.append(
-        "" +
-                "<!DOCTYPE html>\n" +
-                "<html>\n" +
-                "<head>\n" +
-                "    <title>Page Title</title>\n" +
-                "    <meta charset=\"utf-8\"/>\n" +
-                "</head>\n" +
-                "<body><h1>dTest Offline</h1><br/>"
-    )
-    File(DOWNLOAD_FOLDER)
-        .walkTopDown()
-        .filter { file ->
-            file.isDirectory || file.name.endsWith(".html")
-                    && !file.name.contains("ns.html")
-        }
-        .forEach { file ->
-            run {
-                if (file.name.endsWith(".html") && file.canonicalPath.contains("recenze")) {
-                    println(file.path)
-                    val link = "<a href=\"${file.path}\">${file.parentFile.parentFile.name}</a><br/>"
-                    sb.append(link)
-                }
-                if (file.name.endsWith(".html") && !file.canonicalPath.contains("recenze")) {
-                    println(file.path)
-                    val link = "- <a href=\"${file.path}\">${file.parentFile.name}</a><br/>"
-                    sb.append(link)
-                }
-            }
-        }
-    sb.append(
-        "</body>\n" +
-                "</html>"
-    )
-
-    File(MAIN_PAGE_FILENAME).printWriter().use { out -> out.println(sb) }
 }
