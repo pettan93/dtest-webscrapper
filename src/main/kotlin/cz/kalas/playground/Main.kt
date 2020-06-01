@@ -6,13 +6,14 @@ import java.io.File
 import java.nio.charset.Charset
 import java.util.*
 import java.util.concurrent.TimeUnit
+import kotlin.math.max
 import kotlin.streams.toList
 
 /**
  * Gathering links params
  */
 const val BASE_HREF = "https://www.dtest.cz"
-const val ARTICLES_PAGINATOR_MAX = 2
+const val ARTICLES_PAGINATOR_MAX = 91
 const val DOWNLOAD_TASK_FILENAME = "download_list.json"
 
 /**
@@ -20,11 +21,11 @@ const val DOWNLOAD_TASK_FILENAME = "download_list.json"
  */
 const val AUTH_COOKIE = ""
 const val DOWNLOAD_FOLDER = "dtest_offline"
-const val MAIN_PAGE_FILENAME = "dashboard.html"
+const val MAIN_PAGE_FILENAME = "Offline dTest Recenze.html"
 
 fun main() {
 //    prepareDownloadTasks()
-//    executeDownloading()
+    executeDownloading(10)
 }
 
 /**
@@ -81,17 +82,19 @@ fun prepareDownloadTasks() {
 /**
  * Reads file with article links file and executes downloading
  */
-fun executeDownloading() {
+fun executeDownloading(articleLimit: Int) {
     val downloadTasks =
         Gson().fromJson(File(DOWNLOAD_TASK_FILENAME).readText(Charset.defaultCharset()), Array<Article>::class.java)
             .toList() as ArrayList<Article>
 
     File(MAIN_PAGE_FILENAME).printWriter().use { out -> out.println(
-        "<!DOCTYPE html><html><head><title>dTest offline</title><meta charset=\"utf-8\"/></head><body><h1>dTest offline</h1><br/>"
-    ) }
+            "<!DOCTYPE html><html><head><title>dTest offline</title><meta charset=\"utf-8\"/></head>" +
+                    "<body><h1>dTest offline</h1><br/>"
+        )}
 
-    for (article in downloadTasks) {
-        println("Downloading article : " + article.title + " " + article.mainHref)
+    for ((i, article) in
+    downloadTasks.subList(0, if (articleLimit > 0) articleLimit else downloadTasks.size).withIndex()) {
+        println("Downloading $i/${downloadTasks.size} article : " + article.title + " " + article.mainHref)
         if (wget(article.mainHref, "${normalizeTitle(article.title)}/recenze/", AUTH_COOKIE)) {
             createArticleLink(article.title, "${normalizeTitle(article.title)}/recenze/")
         }
@@ -138,7 +141,7 @@ fun wget(url: String, path: String, cookie: String): Boolean {
 //    checkAuthCookie()
     try {
         val command =
-            "wsl wget -E -H -k -K -nd -N -p -P $DOWNLOAD_FOLDER/$path --restrict-file-names=windows" +
+            "wsl wget -E -H -k -K -nd -N -p -P  $DOWNLOAD_FOLDER/$path --restrict-file-names=windows" +
                     " --header \"Cookie: $cookie\" $url"
         println(command)
         val process = ProcessBuilder(command.split(" ")).start()
@@ -160,6 +163,7 @@ fun wget(url: String, path: String, cookie: String): Boolean {
 fun normalizeTitle(articleTitle: String): String {
     val articleNameInvalidChars = "\\s|\\(|\\)".toRegex()
     return articleTitle.trim().replace(articleNameInvalidChars, "_")
+        .substring(0, max(articleTitle.length,25))
 }
 
 fun checkAuthCookie() {
